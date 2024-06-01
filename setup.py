@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='gym_anytrading',
+    name='gym_perpetual_futures_trading',
     version='1.3.2',
     packages=find_packages(),
 
-    author='AminHP',
-    author_email='mdan.hagh@gmail.com',
+    author='leafoliage',
+    author_email='leafoliages@gmail.com',
     license='MIT',
 
     install_requires=[

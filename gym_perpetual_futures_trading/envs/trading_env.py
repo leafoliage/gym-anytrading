@@ -6,9 +6,7 @@ from enum import Enum
 import matplotlib.pyplot as plt
 
 
-class Actions(Enum):
-    Sell = 0
-    Buy = 1
+Actions = [5,4,3,2,1,0.8,0.6,0.4,0.2,0,-0.2,-0.4,-0.6,-0.8,-1,-2,-3,-4,-5] # Buy
 
 
 class Positions(Enum):
@@ -48,6 +46,8 @@ class TradingEnv(gym.Env):
         self._total_profit = None
         self._first_rendering = None
         self.history = None
+        self._unrealized_profit = None
+        self._long_position = None
 
 
     def seed(self, seed=None):
@@ -59,10 +59,12 @@ class TradingEnv(gym.Env):
         self._done = False
         self._current_tick = self._start_tick
         self._last_trade_tick = self._current_tick - 1
-        self._position = Positions.Short
+        self._position = Positions.Long
         self._position_history = (self.window_size * [None]) + [self._position]
         self._total_reward = 0.
         self._total_profit = 1.  # unit
+        self._unrealized_profit = 0
+        self._long_position = 0
         self._first_rendering = True
         self.history = {}
         return self._get_observation()
@@ -80,13 +82,7 @@ class TradingEnv(gym.Env):
 
         self._update_profit(action)
 
-        trade = False
-        if ((action == Actions.Buy.value and self._position == Positions.Short) or
-            (action == Actions.Sell.value and self._position == Positions.Long)):
-            trade = True
-
-        if trade:
-            self._position = self._position.opposite()
+        if Actions[action]!=0:
             self._last_trade_tick = self._current_tick
 
         self._position_history.append(self._position)
@@ -94,7 +90,8 @@ class TradingEnv(gym.Env):
         info = dict(
             total_reward = self._total_reward,
             total_profit = self._total_profit,
-            position = self._position.value
+            long_position = self._long_position,
+            unrealized_profit = self._unrealized_profit
         )
         self._update_history(info)
 
@@ -175,15 +172,31 @@ class TradingEnv(gym.Env):
 
 
     def _process_data(self):
-        raise NotImplementedError
+        prices = self.df.loc[:, 'Close'].to_numpy()
+
+        prices[self.frame_bound[0] - self.window_size]  # validate index (TODO: Improve validation)
+        prices = prices[self.frame_bound[0]-self.window_size:self.frame_bound[1]]
+
+        diff = np.insert(np.diff(prices), 0, 0)
+        signal_features = np.column_stack((prices, diff))
+
+        return prices, signal_features
 
 
     def _calculate_reward(self, action):
-        raise NotImplementedError
+        buy_amount = Actions[action]
+        current_price = self.prices[self._current_tick]
+        delta_total_profit = -buy_amount * current_price
+        delta_unrealized_profit = self._long_position * current_price - self._unrealized_profit
+        return delta_total_profit + delta_unrealized_profit
 
 
     def _update_profit(self, action):
-        raise NotImplementedError
+        buy_amount = Actions[action]
+        current_price = self.prices[self._current_tick]
+        self._long_position += buy_amount
+        self._total_profit -= buy_amount * current_price
+        self._unrealized_profit = self._long_position * current_price
 
 
     def max_possible_profit(self):  # trade fees are ignored
