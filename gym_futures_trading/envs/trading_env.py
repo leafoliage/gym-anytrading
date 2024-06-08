@@ -43,7 +43,7 @@ class TradingEnv(gym.Env):
         self._position = None
         self._position_history = None
         self._total_reward = None
-        self._total_profit = None
+        self._realized_profit = None
         self._first_rendering = None
         self.history = None
         self._unrealized_profit = None
@@ -62,7 +62,7 @@ class TradingEnv(gym.Env):
         self._position = Positions.Long
         self._position_history = (self.window_size * [None]) + [self._position]
         self._total_reward = 0.
-        self._total_profit = 1.  # unit
+        self._realized_profit = 1.  # unit
         self._unrealized_profit = 0
         self._long_position = 0
         self._first_rendering = True
@@ -89,7 +89,7 @@ class TradingEnv(gym.Env):
         observation = self._get_observation()
         info = dict(
             total_reward = self._total_reward,
-            total_profit = self._total_profit,
+            total_profit = self._realized_profit,
             long_position = self._long_position,
             unrealized_profit = self._unrealized_profit
         )
@@ -132,7 +132,7 @@ class TradingEnv(gym.Env):
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward + ' ~ ' +
-            "Total Profit: %.6f" % self._total_profit
+            "Total Profit: %.6f" % self._realized_profit
         )
 
         plt.pause(0.01)
@@ -155,7 +155,7 @@ class TradingEnv(gym.Env):
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward + ' ~ ' +
-            "Total Profit: %.6f" % self._total_profit
+            "Total Profit: %.6f" % self._realized_profit
         )
         
         
@@ -186,16 +186,16 @@ class TradingEnv(gym.Env):
     def _calculate_reward(self, action):
         buy_amount = Actions[action]
         current_price = self.prices[self._current_tick]
-        delta_total_profit = -buy_amount * current_price
+        delta_realized_profit = -buy_amount * current_price
         delta_unrealized_profit = self._long_position * current_price - self._unrealized_profit
-        return delta_total_profit + delta_unrealized_profit
+        return delta_realized_profit + delta_unrealized_profit
 
 
     def _update_profit(self, action):
         buy_amount = Actions[action]
         current_price = self.prices[self._current_tick]
         self._long_position += buy_amount
-        self._total_profit -= buy_amount * current_price
+        self._realized_profit -= buy_amount * current_price
         self._unrealized_profit = self._long_position * current_price
 
 

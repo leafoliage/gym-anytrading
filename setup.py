@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='gym_perpetual_futures_trading',
+    name='gym_futures_trading',
     version='1.3.2',
     packages=find_packages(),
 
@@ -17,6 +17,6 @@ setup(
     ],
 
     package_data={
-        'gym_anytrading': ['datasets/data/*']
+        'gym_futures_trading': ['datasets/data/*']
     }
 )
