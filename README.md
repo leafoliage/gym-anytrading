@@ -20,10 +20,20 @@
 ## Installation
 
 ### From Repository
+
+Clone this repository. Use `pwd` to get its path on your system and copy the path.
+
 ```bash
 git clone -b dev https://github.com/leafoliage/gym-anytrading.git
 cd gym-anytrading
-pip install -e .
+pwd
+```
+
+cd to AI project directory, then install `gym-futures-trading`.
+
+```bash
+cd /path/to/AI-final-project
+pip install -e /path/to/gym-futures-trading
 ```
 
 ## Environment Properties
