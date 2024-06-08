@@ -58,7 +58,7 @@ class TradingEnv(gym.Env):
         self._total_reward = 0.
         self._cash = self._start_cash
         self._unrealized_profit = 0
-        self._total_asset = 0
+        self._total_asset = self._start_cash
         self._long_position = 0
         self._average_bid = 0
         self._first_rendering = True
@@ -190,7 +190,7 @@ class TradingEnv(gym.Env):
         if self._total_asset <= 0:
             return -10000
         future_price = self.prices[self._current_tick + self._future_latency]
-        reward = (future_price - self._average_bid) * self._long_position
+        reward = (future_price - self._average_bid) * self._long_position / self._start_cash
         return reward
 
 
@@ -198,7 +198,10 @@ class TradingEnv(gym.Env):
         buy_amount = Actions[action]
         current_price = self.prices[self._current_tick]
         self._unrealized_profit = (current_price - self._average_bid) * self._long_position
-        self._average_bid = (self._average_bid * self._long_position + buy_amount * current_price) / (self._long_position + buy_amount)
+        if self._long_position + buy_amount == 0:
+            self._average_bid = 0
+        else:
+            self._average_bid = (self._average_bid * self._long_position + buy_amount * current_price) / (self._long_position + buy_amount)
         self._long_position += buy_amount
         self._cash -= buy_amount * current_price
         if (buy_amount < 0 and self._long_position > 0) or (buy_amount > 0 and self._long_position < 0):
