@@ -9,8 +9,8 @@ register(
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_01),
-        'window_size': 24,
-        'frame_bound': (24, len(datasets.FUTURES_01))
+        'window_size': 12,
+        'frame_bound': (12, len(datasets.FUTURES_01))
     }
 )
 
@@ -19,8 +19,8 @@ register(
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_02),
-        'window_size': 24,
-        'frame_bound': (24, len(datasets.FUTURES_02))
+        'window_size': 12,
+        'frame_bound': (12, len(datasets.FUTURES_02))
     }
 )
 
@@ -29,8 +29,8 @@ register(
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_03),
-        'window_size': 24,
-        'frame_bound': (24, len(datasets.FUTURES_03))
+        'window_size': 12,
+        'frame_bound': (12, len(datasets.FUTURES_03))
     }
 )
 
@@ -39,7 +39,7 @@ register(
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_04),
-        'window_size': 24,
-        'frame_bound': (24, len(datasets.FUTURES_04))
+        'window_size': 12,
+        'frame_bound': (12, len(datasets.FUTURES_04))
     }
 )

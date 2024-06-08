@@ -9,27 +9,20 @@ import matplotlib.pyplot as plt
 Actions = [5,4,3,2,1,0.8,0.6,0.4,0.2,0,-0.2,-0.4,-0.6,-0.8,-1,-2,-3,-4,-5] # Buy
 
 
-class Positions(Enum):
-    Short = 0
-    Long = 1
-
-    def opposite(self):
-        return Positions.Short if self == Positions.Long else Positions.Long
-
-
 class TradingEnv(gym.Env):
 
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, df, window_size, frame_bound):
+    def __init__(self, df, window_size, frame_bound, cash=50000):
         assert df.ndim == 2
 
         self.seed()
         self.df = df
+        self.frame_bound = frame_bound
         self.window_size = window_size
         self.prices, self.signal_features = self._process_data()
         self.shape = (window_size, self.signal_features.shape[1])
-        self.frame_bound = frame_bound
+        self._future_latency = 3
 
         # spaces
         self.action_space = spaces.Discrete(len(Actions))
@@ -38,17 +31,19 @@ class TradingEnv(gym.Env):
         # episode
         self._start_tick = self.window_size
         self._end_tick = len(self.prices) - 1
+        self._start_cash = cash
         self._done = None
         self._current_tick = None
         self._last_trade_tick = None
-        self._position = None
         self._position_history = None
         self._total_reward = None
-        self._realized_profit = None
+        self._cash = None
         self._first_rendering = None
         self.history = None
         self._unrealized_profit = None
         self._long_position = None
+        self._total_asset = None
+        self._average_bid = None
 
 
     def seed(self, seed=None):
@@ -60,14 +55,15 @@ class TradingEnv(gym.Env):
         self._done = False
         self._current_tick = self._start_tick
         self._last_trade_tick = self._current_tick - 1
-        self._position = Positions.Long
-        self._position_history = (self.window_size * [None]) + [self._position]
         self._total_reward = 0.
-        self._realized_profit = 1.  # unit
+        self._cash = self._start_cash
         self._unrealized_profit = 0
+        self._total_asset = 0
         self._long_position = 0
+        self._average_bid = 0
         self._first_rendering = True
         self.history = {}
+        self._position_history = (self.window_size * [0]) + [self._long_position]
         return self._get_observation()
 
 
@@ -75,22 +71,23 @@ class TradingEnv(gym.Env):
         self._done = False
         self._current_tick += 1
 
-        if self._current_tick == self._end_tick:
-            self._done = True
-
+        self._update_profit(action)
         step_reward = self._calculate_reward(action)
         self._total_reward += step_reward
 
-        self._update_profit(action)
+        if self._current_tick == self._end_tick - self._future_latency or self._total_asset<=0:
+            self._done = True
 
         if Actions[action]!=0:
             self._last_trade_tick = self._current_tick
 
-        self._position_history.append(self._position)
+        self._position_history.append(self._long_position)
+
         observation = self._get_observation()
         info = dict(
             total_reward = self._total_reward,
-            total_profit = self._realized_profit,
+            total_asset = self._total_asset,
+            cash = self._cash,
             long_position = self._long_position,
             unrealized_profit = self._unrealized_profit
         )
@@ -100,7 +97,13 @@ class TradingEnv(gym.Env):
 
 
     def _get_observation(self):
-        return self.signal_features[(self._current_tick-self.window_size+1):self._current_tick+1]
+        state = self.signal_features[(self._current_tick-self.window_size+1):self._current_tick+1].reshape(48)
+        state = np.append(state, self._unrealized_profit)
+        state = np.append(state, self._total_asset)
+        state = np.append(state, self._cash)
+        state = state / self._start_cash
+        state = np.append(state, self._long_position)
+        return state
 
 
     def _update_history(self, info):
@@ -115,9 +118,9 @@ class TradingEnv(gym.Env):
 
         def _plot_position(position, tick):
             color = None
-            if position == Positions.Short:
+            if position >=0:
                 color = 'red'
-            elif position == Positions.Long:
+            else:
                 color = 'green'
             if color:
                 plt.scatter(tick, self.prices[tick], color=color)
@@ -133,7 +136,7 @@ class TradingEnv(gym.Env):
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward + ' ~ ' +
-            "Total Profit: %.6f" % self._realized_profit
+            "Total Profit: %.6f" % self._cash
         )
 
         plt.pause(0.01)
@@ -145,10 +148,11 @@ class TradingEnv(gym.Env):
 
         short_ticks = []
         long_ticks = []
+        print(self._position_history[:20])
         for i, tick in enumerate(window_ticks):
-            if self._position_history[i] == Positions.Short:
+            if self._position_history[i] >=0:
                 short_ticks.append(tick)
-            elif self._position_history[i] == Positions.Long:
+            else:
                 long_ticks.append(tick)
 
         plt.plot(short_ticks, self.prices[short_ticks], 'ro')
@@ -156,7 +160,7 @@ class TradingEnv(gym.Env):
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward + ' ~ ' +
-            "Total Profit: %.6f" % self._realized_profit
+            "Total Profit: %.6f" % self._cash
         )
         
         
@@ -173,31 +177,33 @@ class TradingEnv(gym.Env):
 
 
     def _process_data(self):
-        prices = self.df.loc[:, 'close'].to_numpy()
+        start = self.frame_bound[0] - self.window_size
+        end = self.frame_bound[1]
 
-        #prices[self.frame_bound[0] - self.window_size]  # validate index (TODO: Improve validation)
-        #prices = prices[self.frame_bound[0]-self.window_size:self.frame_bound[1]]
-
-        diff = np.insert(np.diff(prices), 0, 0)
-        signal_features = np.column_stack((prices, diff))
-
+        prices = self.df['close'].to_numpy()
+        prices = prices[start:end]
+        signal_features = self.df.loc[:, ['open', 'close', 'high', 'low']].to_numpy()[start:end]
         return prices, signal_features
 
 
     def _calculate_reward(self, action):
-        buy_amount = Actions[action]
-        current_price = self.prices[self._current_tick]
-        delta_realized_profit = -buy_amount * current_price
-        delta_unrealized_profit = self._long_position * current_price - self._unrealized_profit
-        return delta_realized_profit + delta_unrealized_profit
+        if self._total_asset <= 0:
+            return -10000
+        future_price = self.prices[self._current_tick + self._future_latency]
+        reward = (future_price - self._average_bid) * self._long_position
+        return reward
 
 
     def _update_profit(self, action):
         buy_amount = Actions[action]
         current_price = self.prices[self._current_tick]
+        self._unrealized_profit = (current_price - self._average_bid) * self._long_position
+        self._average_bid = (self._average_bid * self._long_position + buy_amount * current_price) / (self._long_position + buy_amount)
         self._long_position += buy_amount
-        self._realized_profit -= buy_amount * current_price
-        self._unrealized_profit = self._long_position * current_price
+        self._cash -= buy_amount * current_price
+        if (buy_amount < 0 and self._long_position > 0) or (buy_amount > 0 and self._long_position < 0):
+            self._unrealized_profit -= buy_amount * current_price
+        self._total_asset = self._unrealized_profit + self._cash
 
 
     def max_possible_profit(self):  # trade fees are ignored
