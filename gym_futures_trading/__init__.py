@@ -5,7 +5,7 @@ from . import datasets
 
 
 register(
-    id='btc-futures-01',
+    id='futures1-v0',
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_01),
@@ -15,7 +15,7 @@ register(
 )
 
 register(
-    id='btc-futures-02',
+    id='futures2-v0',
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_02),
@@ -25,7 +25,7 @@ register(
 )
 
 register(
-    id='btc-futures-03',
+    id='futures3-v0',
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_03),
@@ -35,7 +35,7 @@ register(
 )
 
 register(
-    id='btc-futures-04',
+    id='futures4-v0',
     entry_point='gym_futures_trading.envs:TradingEnv',
     kwargs={
         'df': deepcopy(datasets.FUTURES_04),
