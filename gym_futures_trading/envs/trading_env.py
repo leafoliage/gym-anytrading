@@ -170,9 +170,9 @@ class TradingEnv(gym.Env):
 
     def render(self, mode="human"):
 
-        def _plot_position(position, tick):
+        def _plot_position(_long_position, tick):
             color = None
-            if position >= 0:
+            if _long_position >= 0:
                 color = "red"
             else:
                 color = "green"
@@ -186,7 +186,7 @@ class TradingEnv(gym.Env):
             start_position = self._position_history[self._start_tick]
             _plot_position(start_position, self._start_tick)
 
-        _plot_position(self._position, self._current_tick)
+        _plot_position(self._long_position, self._current_tick)
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward
