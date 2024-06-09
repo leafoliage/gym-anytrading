@@ -3,6 +3,7 @@ from gym import spaces
 from gym.utils import seeding
 import numpy as np
 from enum import Enum
+import random
 import matplotlib.pyplot as plt
 
 
@@ -58,7 +59,7 @@ class TradingEnv(gym.Env):
         self.cumulative_loss = 0
 
         # episode
-        self._start_tick = self.window_size
+        self._start_tick = random.randint(self.window_size, len(self.prices) / 2)
         self._end_tick = len(self.prices) - 1
         self._start_cash = cash
         self._done = None
@@ -80,6 +81,7 @@ class TradingEnv(gym.Env):
 
     def reset(self):
         self._done = False
+        self._start_tick = random.randint(self.window_size, len(self.prices) / 2)
         self._current_tick = self._start_tick
         self._last_trade_tick = self._current_tick - 1
         self._total_reward = 0.0
@@ -135,6 +137,8 @@ class TradingEnv(gym.Env):
             cash=self._cash,
             long_position=self._long_position,
             unrealized_profit=self._unrealized_profit,
+            start_tick=self._start_tick,
+            done_tick=self._current_tick,
         )
         self._update_history(info)
 
