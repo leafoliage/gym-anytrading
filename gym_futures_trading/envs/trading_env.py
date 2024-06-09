@@ -36,7 +36,7 @@ class TradingEnv(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, df, window_size, frame_bound, cash=500000):
+    def __init__(self, df, window_size, frame_bound, cash=500000, test = False):
         assert df.ndim == 2
 
         self.seed()
@@ -61,7 +61,9 @@ class TradingEnv(gym.Env):
         self._cumulative_funds = cash
 
         # episode
-        self._start_tick = random.randint(self.window_size, len(self.prices) / 2)
+        self._start_tick = (
+            random.randint(self.window_size, len(self.prices) / 2)
+        ) if not test else self.window_size
         self._end_tick = len(self.prices) - 1
         self._start_time = time.time()
         self._end_time = None
@@ -83,10 +85,13 @@ class TradingEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def reset(self):
+
+    def reset(self, start_tick = None):
         self._cumulative_funds += self._start_cash
         self._done = False
-        self._start_tick = random.randint(self.window_size, len(self.prices) / 2)
+        self._start_tick = (
+            random.randint(self.window_size, len(self.prices) / 2)
+        ) if start_tick == None else start_tick
         self._current_tick = self._start_tick
         self._last_trade_tick = self._current_tick - 1
         self._total_reward = 0.0
@@ -178,9 +183,9 @@ class TradingEnv(gym.Env):
 
     def render(self, mode="human"):
 
-        def _plot_position(position, tick):
+        def _plot_position(_long_position, tick):
             color = None
-            if position >= 0:
+            if _long_position >= 0:
                 color = "red"
             else:
                 color = "green"
@@ -194,7 +199,7 @@ class TradingEnv(gym.Env):
             start_position = self._position_history[self._start_tick]
             _plot_position(start_position, self._start_tick)
 
-        _plot_position(self._position, self._current_tick)
+        _plot_position(self._long_position, self._current_tick)
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward
