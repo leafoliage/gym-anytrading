@@ -26,6 +26,7 @@ Actions = [
     -3,
     -4,
     -5,
+    -np.inf,
 ]  # Buy
 
 
@@ -40,7 +41,7 @@ class TradingEnv(gym.Env):
         self.df = df
         self.frame_bound = frame_bound
         self.window_size = window_size
-        self.prices, self.signal_features = self._process_data()
+        self.prices, self.signal_features, self.volumes = self._process_data()
         self.shape = (window_size, self.signal_features.shape[1])
         self._future_latency = 3
 
@@ -148,6 +149,10 @@ class TradingEnv(gym.Env):
         state = np.append(state, self._cash)
         state = state / self._start_cash
         state = np.append(state, self._long_position)
+        state = np.append((
+            state, 
+            self.volumes[(self._current_tick - self.window_size + 1) : self._current_tick + 1].reshape(self.window_size)
+        ))
         return state
 
     def _update_history(self, info):
@@ -225,7 +230,10 @@ class TradingEnv(gym.Env):
         signal_features = self.df.loc[:, ["open", "close", "high", "low"]].to_numpy()[
             start:end
         ]
-        return prices, signal_features
+        volumes = self.df.loc[:, ["volume"]].to_numpy()[
+            start:end
+        ]
+        return prices, signal_features, volumes
 
     def _calculate_reward(self, action):
         if self._total_asset <= 0:
@@ -237,23 +245,16 @@ class TradingEnv(gym.Env):
         return reward
 
     def _update_profit(self, action):
-        buy_amount = Actions[action]
+        buy_amount = Actions[action] if Actions[action] != -np.inf else -self._long_position
         current_price = self.prices[self._current_tick]
+        self._average_bid = (
+            (self._average_bid * self._long_position + buy_amount * current_price) / (self._long_position + buy_amount)
+        ) if self._long_position + buy_amount != 0 else 0
+        self._long_position += buy_amount
         self._unrealized_profit = (
             current_price - self._average_bid
         ) * self._long_position
-        if self._long_position + buy_amount == 0:
-            self._average_bid = 0
-        else:
-            self._average_bid = (
-                self._average_bid * self._long_position + buy_amount * current_price
-            ) / (self._long_position + buy_amount)
-        self._long_position += buy_amount
         self._cash -= buy_amount * current_price
-        if (buy_amount < 0 and self._long_position > 0) or (
-            buy_amount > 0 and self._long_position < 0
-        ):
-            self._unrealized_profit -= buy_amount * current_price
         self._total_asset = self._unrealized_profit + self._cash
 
     def max_possible_profit(self):  # trade fees are ignored
