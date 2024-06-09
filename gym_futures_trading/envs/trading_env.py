@@ -119,7 +119,7 @@ class TradingEnv(gym.Env):
             elif self.is_dead():
                 self.dead_count += 1
 
-            if self._total_reward > 0:
+            if self._total_asset > 0:
                 self.cumulative_profit += self._total_asset - self._start_cash
             else:
                 self.cumulative_loss += -(self._total_asset - self._start_cash)
