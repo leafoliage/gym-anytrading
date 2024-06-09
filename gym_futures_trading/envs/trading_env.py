@@ -68,15 +68,15 @@ class TradingEnv(gym.Env):
         self._done = None
         self._current_tick = None
         self._last_trade_tick = None
-        self._position_history = None
         self._total_reward = None
         self._cash = None
-        self._first_rendering = None
+        self._first_rendering = True
         self.history = None
         self._unrealized_profit = None
         self._long_position = None
         self._total_asset = None
         self._average_bid = None
+        self._position_history = (self.window_size * [0])
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -84,7 +84,9 @@ class TradingEnv(gym.Env):
 
 
     def reset(self, start_tick = None):
-        self._cumulative_funds += self._start_cash
+        if(self.cumulative_profit - self.cumulative_loss + self._cumulative_funds < 500000):
+            self._cumulative_funds += 500000 - self.cumulative_profit + self.cumulative_loss
+        # self.cumulative_profit -= self._start_cash
         self._done = False
         self._start_tick = (
             random.randint(self.window_size, len(self.prices) / 2)
@@ -97,9 +99,9 @@ class TradingEnv(gym.Env):
         self._total_asset = self._start_cash
         self._long_position = 0
         self._average_bid = 0
-        self._first_rendering = True
+        # self._first_rendering = True
         self.history = {}
-        self._position_history = (self.window_size * [0]) + [self._long_position]
+        # self._position_history = (self.window_size * [0]) + [self._long_position]
         return self._get_observation()
 
     def is_win(self):
@@ -177,23 +179,27 @@ class TradingEnv(gym.Env):
 
     def render(self, mode="human"):
 
-        def _plot_position(_long_position, tick):
-            color = None
-            if _long_position >= 0:
-                color = "red"
-            else:
-                color = "green"
-            if color:
-                plt.scatter(tick, self.prices[tick], color=color)
+        # def _plot_position(_long_position, tick):
+        #     color = None
+        #     if _long_position >= 0:
+        #         color = "red"
+        #     else:
+        #         color = "green"
+        #     if color:
+        #         plt.scatter(tick, self.prices[tick], color=color)
 
+        # get_profit_rate
         if self._first_rendering:
             self._first_rendering = False
             plt.cla()
-            plt.plot(self.prices)
+            # plt.plot(self.prices)
+            print("_position_history len = " + str(len(self._position_history)))
             start_position = self._position_history[self._start_tick]
-            _plot_position(start_position, self._start_tick)
+            # _plot_position(start_position, self._start_tick)
+            plt.scatter(self._start_tick, self.get_profit_rate(), color="red")
 
-        _plot_position(self._long_position, self._current_tick)
+        # _plot_position(self._long_position, self._current_tick)
+        plt.scatter(self._current_tick, self.get_profit_rate(), color="red")
 
         plt.suptitle(
             "Total Reward: %.6f" % self._total_reward
@@ -202,6 +208,7 @@ class TradingEnv(gym.Env):
         )
 
         plt.pause(0.01)
+        plt.savefig("rendered_plot.png")
 
     def render_all(self, mode="human"):
         window_ticks = np.arange(len(self._position_history))
