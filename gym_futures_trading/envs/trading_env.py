@@ -1,4 +1,5 @@
 import gym
+import time
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
@@ -64,6 +65,8 @@ class TradingEnv(gym.Env):
             random.randint(self.window_size, len(self.prices) / 2)
         ) if not test else self.window_size
         self._end_tick = len(self.prices) - 1
+        self._start_time = time.time()
+        self._end_time = None
         self._start_cash = cash
         self._done = None
         self._current_tick = None
@@ -113,6 +116,7 @@ class TradingEnv(gym.Env):
     def step(self, action):
         self._done = False
         self._current_tick += 1
+        spend_time = time.time() - self._start_time
 
         self._update_profit(action)
         step_reward = self._calculate_reward(action)
@@ -148,6 +152,7 @@ class TradingEnv(gym.Env):
             unrealized_profit=self._unrealized_profit,
             start_tick=self._start_tick,
             done_tick=self._current_tick,
+            spend_time=spend_time,
         )
         self._update_history(info)
 
