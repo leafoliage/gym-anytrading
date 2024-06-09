@@ -34,7 +34,7 @@ class TradingEnv(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, df, window_size, frame_bound, cash=50000):
+    def __init__(self, df, window_size, frame_bound, cash=500000):
         assert df.ndim == 2
 
         self.seed()
@@ -149,10 +149,12 @@ class TradingEnv(gym.Env):
         state = np.append(state, self._cash)
         state = state / self._start_cash
         state = np.append(state, self._long_position)
-        state = np.append((
-            state, 
-            self.volumes[(self._current_tick - self.window_size + 1) : self._current_tick + 1].reshape(self.window_size)
-        ))
+        state = np.append(
+            state,
+            self.volumes[
+                (self._current_tick - self.window_size + 1) : self._current_tick + 1
+            ].reshape(self.window_size),
+        )
         return state
 
     def _update_history(self, info):
@@ -230,9 +232,7 @@ class TradingEnv(gym.Env):
         signal_features = self.df.loc[:, ["open", "close", "high", "low"]].to_numpy()[
             start:end
         ]
-        volumes = self.df.loc[:, ["volume"]].to_numpy()[
-            start:end
-        ]
+        volumes = self.df.loc[:, ["volume"]].to_numpy()[start:end]
         return prices, signal_features, volumes
 
     def _calculate_reward(self, action):
@@ -245,11 +245,18 @@ class TradingEnv(gym.Env):
         return reward
 
     def _update_profit(self, action):
-        buy_amount = Actions[action] if Actions[action] != -np.inf else -self._long_position
+        buy_amount = (
+            Actions[action] if Actions[action] != -np.inf else -self._long_position
+        )
         current_price = self.prices[self._current_tick]
         self._average_bid = (
-            (self._average_bid * self._long_position + buy_amount * current_price) / (self._long_position + buy_amount)
-        ) if self._long_position + buy_amount != 0 else 0
+            (
+                (self._average_bid * self._long_position + buy_amount * current_price)
+                / (self._long_position + buy_amount)
+            )
+            if self._long_position + buy_amount != 0
+            else 0
+        )
         self._long_position += buy_amount
         self._unrealized_profit = (
             current_price - self._average_bid
@@ -268,3 +275,6 @@ class TradingEnv(gym.Env):
             return ["inf", ""]
         profit_ratio = round(self.cumulative_profit / self.cumulative_loss, 2)
         return [profit_ratio, 1]
+
+    def get_total_asset(self):
+        return self._total_asset
