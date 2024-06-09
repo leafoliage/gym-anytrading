@@ -35,7 +35,7 @@ class TradingEnv(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, df, window_size, frame_bound, cash=500000):
+    def __init__(self, df, window_size, frame_bound, cash=500000, test = False):
         assert df.ndim == 2
 
         self.seed()
@@ -59,7 +59,9 @@ class TradingEnv(gym.Env):
         self.cumulative_loss = 0
 
         # episode
-        self._start_tick = random.randint(self.window_size, len(self.prices) / 2)
+        self._start_tick = (
+            random.randint(self.window_size, len(self.prices) / 2)
+        ) if not test else self.window_size
         self._end_tick = len(self.prices) - 1
         self._start_cash = cash
         self._done = None
@@ -79,9 +81,11 @@ class TradingEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def reset(self):
+    def reset(self, start_tick = None):
         self._done = False
-        self._start_tick = random.randint(self.window_size, len(self.prices) / 2)
+        self._start_tick = (
+            random.randint(self.window_size, len(self.prices) / 2)
+        ) if start_tick == None else start_tick
         self._current_tick = self._start_tick
         self._last_trade_tick = self._current_tick - 1
         self._total_reward = 0.0
