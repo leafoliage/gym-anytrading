@@ -57,6 +57,7 @@ class TradingEnv(gym.Env):
         self.dead_count = 0
         self.cumulative_profit = 0
         self.cumulative_loss = 0
+        self._cumulative_funds = cash
 
         # episode
         self._start_tick = (
@@ -81,7 +82,9 @@ class TradingEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+
     def reset(self, start_tick = None):
+        self._cumulative_funds += self._start_cash
         self._done = False
         self._start_tick = (
             random.randint(self.window_size, len(self.prices) / 2)
@@ -283,6 +286,13 @@ class TradingEnv(gym.Env):
             return ["inf", ""]
         profit_ratio = round(self.cumulative_profit / self.cumulative_loss, 2)
         return [profit_ratio, 1]
+
+    def get_profit_rate(self):
+        return (
+            (self.cumulative_profit - self.cumulative_loss)
+            / self._cumulative_funds
+            * 100
+        )
 
     def get_total_asset(self):
         return self._total_asset
