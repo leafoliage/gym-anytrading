@@ -36,7 +36,7 @@ class TradingEnv(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, df, window_size, frame_bound, cash=500000, test = False):
+    def __init__(self, df, window_size, frame_bound, cash=500000, test=False):
         assert df.ndim == 2
 
         self.seed()
@@ -62,8 +62,10 @@ class TradingEnv(gym.Env):
 
         # episode
         self._start_tick = (
-            random.randint(self.window_size, len(self.prices) / 2)
-        ) if not test else self.window_size
+            (random.randint(self.window_size, len(self.prices) / 2))
+            if not test
+            else self.window_size
+        )
         self._end_tick = len(self.prices) - 1
         self._start_time = time.time()
         self._end_time = None
@@ -79,21 +81,30 @@ class TradingEnv(gym.Env):
         self._long_position = None
         self._total_asset = None
         self._average_bid = None
-        self._position_history = (self.window_size * [0])
+        self._position_history = self.window_size * [0]
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-
-    def reset(self, start_tick = None):
-        if(self.cumulative_profit - self.cumulative_loss + self._cumulative_funds < 500000):
-            self._cumulative_funds += 500000 - self.cumulative_profit + self.cumulative_loss
+    def reset(self, start_tick=None):
+        if (
+            self.cumulative_profit - self.cumulative_loss + self._cumulative_funds
+            < 500000
+        ):
+            self._cumulative_funds += (
+                500000
+                - self.cumulative_profit
+                + self.cumulative_loss
+                - self._cumulative_funds
+            )
         # self.cumulative_profit -= self._start_cash
         self._done = False
         self._start_tick = (
-            random.randint(self.window_size, len(self.prices) / 2)
-        ) if start_tick == None else start_tick
+            (random.randint(self.window_size, len(self.prices) / 2))
+            if start_tick == None
+            else start_tick
+        )
         self._current_tick = self._start_tick
         self._last_trade_tick = self._current_tick - 1
         self._total_reward = 0.0
@@ -104,6 +115,7 @@ class TradingEnv(gym.Env):
         self._average_bid = 0
         # self._first_rendering = True
         self.history = {}
+        self._start_time = time.time()
         # self._position_history = (self.window_size * [0]) + [self._long_position]
         return self._get_observation()
 
@@ -153,6 +165,7 @@ class TradingEnv(gym.Env):
             start_tick=self._start_tick,
             done_tick=self._current_tick,
             spend_time=spend_time,
+            current_profit_rate=self.get_profit_rate(),
         )
         self._update_history(info)
 
