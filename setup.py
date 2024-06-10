@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='gym_anytrading',
-    version='2.0.0',
+    name='gym_futures_trading',
+    version='1.0.0',
     packages=find_packages(),
 
-    author='AminHP',
-    author_email='mdan.hagh@gmail.com',
+    author='leafoliage',
+    author_email='leafoliages@gmail.com',
     license='MIT',
 
     install_requires=[
@@ -17,6 +17,6 @@ setup(
     ],
 
     package_data={
-        'gym_anytrading': ['datasets/data/*']
+        'gym_futures_trading': ['datasets/data/*']
     }
 )
