@@ -88,7 +88,7 @@ class TradingEnv(gym.Env):
 
     def reset(self, start_tick = None):
         if(self.cumulative_profit - self.cumulative_loss + self._cumulative_funds < 500000):
-            self._cumulative_funds += 500000 - self.cumulative_profit + self.cumulative_loss
+            self._cumulative_funds += 500000 - self.cumulative_profit + self.cumulative_loss - self._cumulative_funds
         # self.cumulative_profit -= self._start_cash
         self._done = False
         self._start_tick = (
@@ -153,6 +153,10 @@ class TradingEnv(gym.Env):
             start_tick=self._start_tick,
             done_tick=self._current_tick,
             spend_time=spend_time,
+            cumulative_profit = self.cumulative_profit,
+            cumulative_loss = self.cumulative_loss,
+            cumulative_funds = self._cumulative_funds,
+            average_bid = self._average_bid
         )
         self._update_history(info)
 
@@ -271,20 +275,41 @@ class TradingEnv(gym.Env):
         buy_amount = (
             Actions[action] if Actions[action] != -np.inf else -self._long_position
         )
+
         current_price = self.prices[self._current_tick]
-        self._average_bid = (
-            (
-                (self._average_bid * self._long_position + buy_amount * current_price)
-                / (self._long_position + buy_amount)
-            )
-            if self._long_position + buy_amount != 0
-            else 0
-        )
-        self._long_position += buy_amount
+        # update profit (time)
         self._unrealized_profit = (
             current_price - self._average_bid
         ) * self._long_position
-        self._cash -= buy_amount * current_price
+
+        # 同向操作
+        if self._long_position * buy_amount >= 0:
+            self._average_bid = (
+                (
+                    (self._average_bid * self._long_position + buy_amount * current_price)
+                    / (self._long_position + buy_amount)
+                )
+                if self._long_position + buy_amount != 0
+                else 0
+            )
+
+        # 多空轉換
+        if  self._long_position * buy_amount < 0 and abs(buy_amount) >= abs(self._long_position) :
+            self._cash += self._unrealized_profit
+            self._unrealized_profit = 0
+            self._average_bid = current_price
+        #反向操作
+        elif self._long_position * buy_amount < 0 and abs(buy_amount) < abs(self._long_position):
+            if self._long_position > 0:
+                self._cash -= buy_amount * current_price
+                self._unrealized_profit += buy_amount * current_price
+            elif self._long_position <0:
+                self._cash += buy_amount * current_price
+                self._unrealized_profit -= buy_amount * current_price
+       
+        self._long_position += buy_amount
+
+
         self._total_asset = self._unrealized_profit + self._cash
 
     def max_possible_profit(self):  # trade fees are ignored
