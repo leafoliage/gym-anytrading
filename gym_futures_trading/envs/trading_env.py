@@ -62,7 +62,7 @@ class TradingEnv(gym.Env):
 
         # episode
         self._start_tick = (
-            (random.randint(self.window_size, len(self.prices) / 2))
+            (random.randint(self.window_size, len(self.prices) - self.window_size))
             if not test
             else self.window_size
         )
@@ -180,10 +180,12 @@ class TradingEnv(gym.Env):
         state = self.signal_features[
             (self._current_tick - self.window_size + 1) : self._current_tick + 1
         ].reshape(self.window_size * 4)
+        #print(state)
         tempstate = state
         for i in range(48):
                 for j in range(4):
-                    tempstate[i*4+j] = (state[44+j] - state[4*i+j])/state[44+j]
+                    if(state[188+j] == 0): print(state)
+                    tempstate[i*4+j] = (state[188+j] - state[4*i+j])/state[188+j]
         state = tempstate
         state = np.append(state, self._unrealized_profit)
         state = np.append(state, self._total_asset)
@@ -222,7 +224,7 @@ class TradingEnv(gym.Env):
             self._first_rendering = False
             plt.cla()
             # plt.plot(self.prices)
-            print("_position_history len = " + str(len(self._position_history)))
+            # print("_position_history len = " + str(len(self._position_history)))
             start_position = self._position_history[self._start_tick]
             # _plot_position(start_position, self._start_tick)
             plt.scatter(self._start_tick, self.get_profit_rate(), color="red")
