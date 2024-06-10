@@ -180,10 +180,16 @@ class TradingEnv(gym.Env):
         state = self.signal_features[
             (self._current_tick - self.window_size + 1) : self._current_tick + 1
         ].reshape(self.window_size * 4)
+        tempstate = state
+        for i in range(48):
+                for j in range(4):
+                    tempstate[i*4+j] = (state[44+j] - state[4*i+j])/state[44+j]
+        state = tempstate
         state = np.append(state, self._unrealized_profit)
         state = np.append(state, self._total_asset)
         state = np.append(state, self._cash)
-        state = state / self._start_cash
+        # state = state / self._start_cash
+        # print(len(state))
         state = np.append(state, self._long_position)
         state = np.append(
             state,
