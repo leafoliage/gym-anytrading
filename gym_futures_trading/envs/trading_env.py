@@ -36,7 +36,7 @@ class TradingEnv(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, df, window_size, frame_bound, cash=500000, test=False):
+    def __init__(self, df, window_size, frame_bound, cash=3000, test=False):
         assert df.ndim == 2
 
         self.seed()
@@ -90,10 +90,10 @@ class TradingEnv(gym.Env):
     def reset(self, start_tick=None):
         if (
             self.cumulative_profit - self.cumulative_loss + self._cumulative_funds
-            < 500000
+            < self._start_cash
         ):
             self._cumulative_funds += (
-                500000
+                self._start_cash
                 - self.cumulative_profit
                 + self.cumulative_loss
                 - self._cumulative_funds
@@ -170,6 +170,7 @@ class TradingEnv(gym.Env):
             cumulative_funds=self._cumulative_funds,
             average_bid=self._average_bid,
             profit_rate=self.get_profit_rate(),
+            current_price=self.prices[self._current_tick],
         )
         self._update_history(info)
 
@@ -320,12 +321,14 @@ class TradingEnv(gym.Env):
         elif self._long_position * buy_amount < 0 and abs(buy_amount) < abs(
             self._long_position
         ):
-            if self._long_position > 0:
-                self._cash -= buy_amount * current_price
-                self._unrealized_profit += buy_amount * current_price
-            elif self._long_position < 0:
-                self._cash += buy_amount * current_price
-                self._unrealized_profit -= buy_amount * current_price
+            position_discount = abs(buy_amount) / abs(self._long_position)
+            realized_profit = (
+                position_discount
+                * (current_price - self._average_bid)
+                * self._long_position
+            )
+            self._cash += realized_profit
+            self._unrealized_profit -= realized_profit
 
         self._long_position += buy_amount
 
